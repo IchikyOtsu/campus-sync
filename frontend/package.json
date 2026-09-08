@@ -1,0 +1,6 @@
+{
+  "name": "campus-sync-frontend", "private": true, "version": "0.1.0", "type": "module",
+  "scripts": { "dev": "vite", "build": "tsc -b && vite build", "lint": "tsc --noEmit" },
+  "dependencies": { "@supabase/supabase-js": "2.49.1", "solid-js": "^1.9.4" },
+  "devDependencies": { "typescript": "~5.7.2", "vite": "^6.1.0", "vite-plugin-solid": "^2.11.0" }
+}
