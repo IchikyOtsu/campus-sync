@@ -5,7 +5,10 @@
 **/.env.*
 !.env.example
 !**/.env.example
-
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
 # JavaScript / frontend
 node_modules/
 **/node_modules/
