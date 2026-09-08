@@ -93,6 +93,15 @@ def test_timeedit_add_commits_course_to_pae_and_returns_summary(monkeypatch):
     assert response.status_code == 200
     assert response.json()["pae"]["academic_year"] == "2026-2027"
     assert response.json()["pae"]["course_count"] == 1
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[current_user] = override_user
+    try:
+        duplicate = TestClient(app).post("/api/institutions/ulb/courses/add", json={"code": "ELECH550", "external_id": "178081.5", "academic_year": "2026-2027"})
+    finally:
+        app.dependency_overrides.clear()
+    assert duplicate.status_code == 200
+    assert duplicate.json()["already_in_pae"] is True
+    assert duplicate.json()["pae"]["course_count"] == 1
     with Session(engine) as db:
         offering = db.scalar(select(CourseOffering).join(Course).where(Course.code == "ELECH550"))
         assert offering is not None

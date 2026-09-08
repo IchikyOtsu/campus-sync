@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import current_user
 from app.connectors.timeedit import TimeEditConnector, TimeEditUnavailable
 from app.db.session import get_db
-from app.models.models import Course, CourseOffering, Institution, UserProfile
+from app.models.models import Course, CourseOffering, Institution, UserPAECourse, UserProfile
 from app.services.pae import add_offering_to_pae, pae_summary
 from app.services.sync import sync_events
 
@@ -73,6 +73,8 @@ async def add_ulb_course(
     else:
         offering.external_id = match.external_id
     result = sync_events(db, offering, teaching_events)
+    existing_pae = pae_summary(db, user.id, selection.academic_year)
+    already_in_pae = db.get(UserPAECourse, {"user_pae_id": existing_pae["id"], "course_offering_id": offering.id}) is not None
     add_offering_to_pae(db, user.id, selection.academic_year, offering.id)
     db.commit()
-    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "pae": pae_summary(db, user.id, selection.academic_year), "offering": {"id": offering.id, "academic_year": offering.academic_year, "semester": offering.semester, "course": {"id": course.id, "code": course.code, "name": course.name, "credits": course.credits, "institution": {"slug": institution.slug, "name": institution.name, "provider": institution.schedule_provider}}}}
+    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "already_in_pae": already_in_pae, "pae": pae_summary(db, user.id, selection.academic_year), "offering": {"id": offering.id, "academic_year": offering.academic_year, "semester": offering.semester, "course": {"id": course.id, "code": course.code, "name": course.name, "credits": course.credits, "institution": {"slug": institution.slug, "name": institution.name, "provider": institution.schedule_provider}}}}
