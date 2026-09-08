@@ -55,8 +55,8 @@ def upgrade():
             paes[key] = pae_id
         bind.execute(sa.text("""
             INSERT INTO user_pae_courses (user_pae_id, course_offering_id)
-            SELECT :pae_id, :offering_id
-            WHERE NOT EXISTS (SELECT 1 FROM user_pae_courses WHERE user_pae_id = :pae_id AND course_offering_id = :offering_id)
+            VALUES (CAST(:pae_id AS varchar(36)), CAST(:offering_id AS varchar(36)))
+            ON CONFLICT (user_pae_id, course_offering_id) DO NOTHING
         """), {"pae_id": pae_id, "offering_id": row["course_offering_id"]})
 
 
