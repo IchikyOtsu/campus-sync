@@ -35,6 +35,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     console.error('API request failed', { status: response.status, endpoint: path, message });
     throw new ApiRequestError(response.status, path, message);
   }
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
 }
 
