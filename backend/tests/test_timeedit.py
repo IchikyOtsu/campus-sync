@@ -6,8 +6,8 @@ import pytest
 from app.connectors.base import NormalizedEvent
 from app.connectors.timeedit import TimeEditConnector, TimeEditUnavailable
 
-HTML = '''<div class="searchObject" data-id="181733.5" data-name="CHIMF415, Electrochimie, 202627"></div>
-<div class="searchObject" data-id="156292.5" data-name="CHIMF415, Electrochimie, 202526"></div>'''
+HTML = '''<div class="searchObject" data-id="181733.5" data-idonly="181733" data-type="5" data-name="CHIMF415, Electrochimie, 202627"></div>
+<div class="searchObject" data-id="156292.5" data-idonly="156292" data-type="5" data-name="CHIMF415, Electrochimie, 202526"></div>'''
 
 
 def client(body: str, status: int = 200):

@@ -49,7 +49,7 @@ class TimeEditConnector:
 
     @staticmethod
     def _parse_results(html: str, academic_year: str) -> list[TimeEditCourse]:
-        candidates = re.findall(r'data-id="([^"]+)"\s+data-name="([^"]+)"', html)
+        candidates = re.findall(r'data-id="([^"]+)"[^>]*?data-name="([^"]+)"', html)
         target_year = TimeEditConnector._year_token(academic_year)
         results: list[TimeEditCourse] = []
         for external_id, raw_name in candidates:
@@ -64,7 +64,7 @@ class TimeEditConnector:
         if not query: return []
         # TimeEdit ULB indexes mnemonic codes without their administrative hyphen.
         if re.fullmatch(r"[A-Za-z]+-[A-Za-z]*\d+", query): query = query.replace("-", "")
-        params = {"max": 100, "fr": "t", "partajax": "t", "im": "f", "sid": self.provider.schedule_id, "search_text": query.strip(), "types": self.provider.course_type}
+        params = {"max": 100, "fr": "t", "partajax": "t", "im": "f", "sid": self.provider.schedule_id, "l": "fr_SY", "search_text": query.strip(), "types": self.provider.course_type}
         url = f"{self.provider.base_url}objects.html?{urlencode(params)}"
         try:
             if self.client:

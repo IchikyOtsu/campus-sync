@@ -13,7 +13,7 @@ The iCalendar export is preferred over reservation HTML. It is parsed through th
 
 ## Limitations and risks
 
-- On 8 September 2026, the public search returned no result for `ELEC-H550` and `MATH-F307` in `2026-2027`; campus-sync returns an explicit empty result and creates no fake event.
+- Live validation on 8 September 2026 returned `ELECH550` / `Embedded System Security` (object `178081.5`, 23 teaching events) and `MATHF307` / `Mathématiques discrètes` (object `179780.5`, 43 teaching events) for `2026-2027`.
 - Future timetables can be absent or contain only calendar-level information. An offering with no dated teaching event is rejected by the add route.
 - `sid`, object type, HTML attributes and export parameters are public implementation details and can change. The connector raises a provider error rather than guessing.
 - Requests use public endpoints only; no ULB/MonULB credential is used.
