@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import current_user
 from app.connectors.timeedit import TimeEditConnector, TimeEditUnavailable
@@ -60,11 +60,12 @@ async def add_ulb_course(
     institution = db.scalar(select(Institution).where(Institution.slug == "ulb"))
     if not institution:
         raise HTTPException(503, "ULB provider is not seeded")
-    course = db.scalar(select(Course).where(Course.institution_id == institution.id, Course.code == match.code))
+    canonical = lambda code: "".join(char for char in code.casefold() if char.isalnum())
+    course = next((item for item in db.scalars(select(Course).where(Course.institution_id == institution.id)) if canonical(item.code) == canonical(match.code)), None)
     if not course:
         course = Course(institution_id=institution.id, code=match.code, name=match.name, credits=None)
         db.add(course); db.flush()
-    offering = db.scalar(select(CourseOffering).where(CourseOffering.course_id == course.id, CourseOffering.academic_year == selection.academic_year, CourseOffering.semester.is_(None)))
+    offering = next((item for item in db.scalars(select(CourseOffering).join(CourseOffering.course).where(CourseOffering.academic_year == selection.academic_year, Course.institution_id == institution.id).options(joinedload(CourseOffering.course))) if canonical(item.course.code) == canonical(match.code)), None)
     if not offering:
         offering = CourseOffering(course_id=course.id, academic_year=selection.academic_year, semester=None, external_id=match.external_id, source_url=connector.provider.base_url)
         db.add(offering); db.flush()

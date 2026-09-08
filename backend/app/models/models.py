@@ -119,3 +119,9 @@ class ScheduleChange(Base):
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class UserProgram(Base):
+    __tablename__ = "user_programs"
+    user_id: Mapped[str] = mapped_column(ForeignKey("user_profiles.id"), primary_key=True)
+    program_id: Mapped[str] = mapped_column(ForeignKey("programs.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
