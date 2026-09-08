@@ -10,10 +10,12 @@ from app.models.models import (
     CourseOffering,
     Program,
     ProgramCourse,
-    UserCourse,
+    UserPAE,
+    UserPAECourse,
     UserProfile,
     UserProgram,
 )
+from app.services.pae import add_offering_to_pae
 from app.services.sync import sync_events
 
 router = APIRouter(prefix="/api/me/programs", tags=["user-programs"])
@@ -30,10 +32,11 @@ def program_summary(program: Program):
 def detail(db: Session, user: UserProfile, program: Program):
     offerings = db.scalars(
         select(CourseOffering)
-        .join(UserCourse, UserCourse.course_offering_id == CourseOffering.id)
+        .join(UserPAECourse, UserPAECourse.course_offering_id == CourseOffering.id)
+        .join(UserPAE, UserPAE.id == UserPAECourse.user_pae_id)
         .join(CourseOffering.course)
         .options(joinedload(CourseOffering.course).joinedload(Course.institution))
-        .where(UserCourse.user_id == user.id, CourseOffering.academic_year == program.academic_year)
+        .where(UserPAE.user_id == user.id, UserPAE.academic_year == program.academic_year, CourseOffering.academic_year == program.academic_year)
     ).unique()
     followed = {(item.course.institution.slug, canonical(item.course.code)) for item in offerings}
     courses = []
@@ -110,6 +113,6 @@ async def add_program_course(program_id: str, program_course_id: str, db: Sessio
         db.add(offering); db.flush()
     offering.external_id = match.external_id
     result = sync_events(db, offering, teaching)
-    if not db.get(UserCourse, {"user_id": user.id, "course_offering_id": offering.id}):
-        db.add(UserCourse(user_id=user.id, course_offering_id=offering.id)); db.commit()
+    add_offering_to_pae(db, user.id, get_program(db, program_id).academic_year, offering.id, item.id)
+    db.commit()
     return {"offering_id": offering.id, "sync": result}

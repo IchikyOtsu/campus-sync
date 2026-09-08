@@ -9,7 +9,8 @@ from app.models.models import (
     Institution,
     Program,
     ProgramCourse,
-    UserCourse,
+    UserPAE,
+    UserPAECourse,
     UserProfile,
     UserProgram,
 )
@@ -30,7 +31,9 @@ def test_user_program_and_existing_hyphenated_ulb_course_is_added():
         db.add(ProgramCourse(program_id=program.id, home_code="ELEC-H550", provider_course_id=provider_course.id, semester="Q1", required=True))
         offering = CourseOffering(course_id=followed_course.id, academic_year="2026-2027", semester=None)
         db.add(offering); db.flush()
-        db.add_all([UserCourse(user_id=user.id, course_offering_id=offering.id), UserProgram(user_id=user.id, program_id=program.id)])
+        pae = UserPAE(user_id=user.id, academic_year="2026-2027", name="PAE 2026-2027")
+        db.add(pae); db.flush()
+        db.add_all([UserPAECourse(user_pae_id=pae.id, course_offering_id=offering.id), UserProgram(user_id=user.id, program_id=program.id)])
         db.commit(); db.refresh(program)
         # relationships are loaded by the endpoint query in production; attach for this unit-level status test.
         program.program_courses[0].provider_course = provider_course

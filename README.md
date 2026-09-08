@@ -30,7 +30,7 @@ L’API de santé est disponible sur `GET /health`. Le seed crée le programme U
 
 ## Migrations et données
 
-Les modèles SQLAlchemy couvrent institutions, cours, offerings, programmes/mappings, profils Supabase, sélections utilisateur, événements et changements détectés. En développement, `app.db.init_db` initialise le schéma et le seed ; la migration Alembic initiale doit être générée avant le premier déploiement partagé (`alembic revision --autogenerate -m initial`).
+Les modèles SQLAlchemy couvrent institutions, cours, offerings, programmes/mappings, profils Supabase, PAE par année, cours du PAE, événements et changements détectés. Le backend Docker applique `alembic upgrade head` avant le seed : les anciennes sélections `user_courses` sont migrées dans les PAE correspondants. En développement, `app.db.init_db` initialise le schéma et le seed ; la migration Alembic initiale doit être générée avant le premier déploiement partagé (`alembic revision --autogenerate -m initial`).
 
 ## Tests et CI
 

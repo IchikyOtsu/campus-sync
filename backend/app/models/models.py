@@ -103,11 +103,21 @@ class UserProfile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class UserCourse(Base):
-    __tablename__ = "user_courses"
-    __table_args__ = (UniqueConstraint("user_id", "course_offering_id", name="uq_user_offering"),)
-    user_id: Mapped[str] = mapped_column(ForeignKey("user_profiles.id"), primary_key=True)
+class UserPAE(Timestamped, Base):
+    __tablename__ = "user_paes"
+    __table_args__ = (UniqueConstraint("user_id", "academic_year", name="uq_user_pae_year"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("user_profiles.id"), index=True)
+    academic_year: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str | None] = mapped_column(String(160))
+
+
+class UserPAECourse(Base):
+    __tablename__ = "user_pae_courses"
+    __table_args__ = (UniqueConstraint("user_pae_id", "course_offering_id", name="uq_pae_offering"),)
+    user_pae_id: Mapped[str] = mapped_column(ForeignKey("user_paes.id"), primary_key=True)
     course_offering_id: Mapped[str] = mapped_column(ForeignKey("course_offerings.id"), primary_key=True)
+    program_course_id: Mapped[str | None] = mapped_column(ForeignKey("program_courses.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

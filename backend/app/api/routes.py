@@ -15,10 +15,12 @@ from app.models.models import (
     Program,
     ProgramCourse,
     ScheduleEvent,
-    UserCourse,
+    UserPAE,
+    UserPAECourse,
     UserProfile,
 )
 from app.services.conflicts import user_conflicts
+from app.services.pae import DEFAULT_ACADEMIC_YEAR, add_offering_to_pae, get_or_create_pae
 from app.services.sync import sync_events
 
 router = APIRouter(prefix="/api")
@@ -40,32 +42,70 @@ def courses(query: str = "", institution: str | None = None, db: Session = Depen
     if institution: statement = statement.join(Course.institution).where(Institution.slug == institution)
     return [{"id": item.id, "code": item.code, "name": item.name, "credits": item.credits, "institution": item.institution.slug} for item in db.scalars(statement)]
 
-@router.get("/me/courses")
-def my_courses(db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    statement = select(CourseOffering).join(UserCourse).where(UserCourse.user_id == user.id).options(joinedload(CourseOffering.course).joinedload(Course.institution))
-    return [offering_data(item) for item in db.scalars(statement).unique()]
+def _pae_for_request(db: Session, user: UserProfile, academic_year: str | None) -> UserPAE:
+    return get_or_create_pae(db, user.id, academic_year or DEFAULT_ACADEMIC_YEAR)
 
-@router.post("/me/courses/{offering_id}")
-def add_course(offering_id: str, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    if not db.get(CourseOffering, offering_id): raise HTTPException(404, "Offering not found")
-    if not db.get(UserCourse, {"user_id": user.id, "course_offering_id": offering_id}): db.add(UserCourse(user_id=user.id, course_offering_id=offering_id)); db.commit()
+
+def _pae_courses(db: Session, user: UserProfile, academic_year: str | None):
+    pae = _pae_for_request(db, user, academic_year)
+    statement = (select(CourseOffering).join(UserPAECourse).where(UserPAECourse.user_pae_id == pae.id)
+                 .options(joinedload(CourseOffering.course).joinedload(Course.institution)))
+    return pae, list(db.scalars(statement).unique())
+
+
+@router.get("/me/pae")
+def my_pae(academic_year: str = DEFAULT_ACADEMIC_YEAR, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    pae, offerings = _pae_courses(db, user, academic_year)
+    db.commit()
+    return {"id": pae.id, "academic_year": pae.academic_year, "name": pae.name, "course_count": len(offerings)}
+
+
+@router.get("/me/pae/courses")
+@router.get("/me/courses", include_in_schema=False)
+def my_pae_courses(academic_year: str | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    _, offerings = _pae_courses(db, user, academic_year)
+    db.commit()
+    return [offering_data(item) for item in offerings]
+
+
+@router.post("/me/pae/courses/{offering_id}")
+@router.post("/me/courses/{offering_id}", include_in_schema=False)
+def add_pae_course(offering_id: str, academic_year: str | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    offering = db.get(CourseOffering, offering_id)
+    if not offering: raise HTTPException(404, "Offering not found")
+    if academic_year and offering.academic_year != academic_year: raise HTTPException(422, "Offering does not belong to this academic year")
+    add_offering_to_pae(db, user.id, offering.academic_year, offering.id)
+    db.commit()
     return {"ok": True}
 
-@router.delete("/me/courses/{offering_id}", status_code=204)
-def remove_course(offering_id: str, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    item = db.get(UserCourse, {"user_id": user.id, "course_offering_id": offering_id})
+
+@router.delete("/me/pae/courses/{offering_id}", status_code=204)
+@router.delete("/me/courses/{offering_id}", status_code=204, include_in_schema=False)
+def remove_pae_course(offering_id: str, academic_year: str | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    pae = _pae_for_request(db, user, academic_year)
+    item = db.get(UserPAECourse, {"user_pae_id": pae.id, "course_offering_id": offering_id})
     if item: db.delete(item); db.commit()
 
-@router.get("/me/events")
-def my_events(start: datetime | None = None, end: datetime | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    statement = select(ScheduleEvent).join(ScheduleEvent.offering).join(UserCourse).where(UserCourse.user_id == user.id, ScheduleEvent.is_cancelled.is_(False)).options(joinedload(ScheduleEvent.offering).joinedload(CourseOffering.course).joinedload(Course.institution))
+
+@router.get("/me/pae/events")
+@router.get("/me/events", include_in_schema=False)
+def my_pae_events(start: datetime | None = None, end: datetime | None = None, academic_year: str | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    pae = _pae_for_request(db, user, academic_year)
+    db.commit()
+    statement = (select(ScheduleEvent).join(ScheduleEvent.offering).join(UserPAECourse)
+        .where(UserPAECourse.user_pae_id == pae.id, ScheduleEvent.is_cancelled.is_(False))
+        .options(joinedload(ScheduleEvent.offering).joinedload(CourseOffering.course).joinedload(Course.institution)))
     if start: statement = statement.where(ScheduleEvent.end_at > start)
     if end: statement = statement.where(ScheduleEvent.start_at < end)
     return [{"id": e.id, "external_id": e.external_id, "title": e.title, "event_type": e.event_type, "start_at": e.start_at, "end_at": e.end_at, "campus": e.campus, "building": e.building, "room": e.room, "teacher": e.teacher, "source_url": e.source_url, "course": {"code": e.offering.course.code, "name": e.offering.course.name, "institution": e.offering.course.institution.name}} for e in db.scalars(statement).unique()]
 
+
 @router.get("/me/conflicts")
-def conflicts(db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    return [{"start_at": item["start_at"], "end_at": item["end_at"], "duration_minutes": item["minutes"], "courses": [{"code": item["first"].offering.course.code, "institution": item["first"].offering.course.institution.name}, {"code": item["second"].offering.course.code, "institution": item["second"].offering.course.institution.name}]} for item in user_conflicts(db, user.id)]
+def conflicts(academic_year: str | None = None, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
+    # The helper reads the user's PAE courses; ensure the requested PAE exists first.
+    _pae_for_request(db, user, academic_year)
+    db.commit()
+    return [{"start_at": item["start_at"], "end_at": item["end_at"], "duration_minutes": item["minutes"], "courses": [{"code": item["first"].offering.course.code, "institution": item["first"].offering.course.institution.name}, {"code": item["second"].offering.course.code, "institution": item["second"].offering.course.institution.name}]} for item in user_conflicts(db, user.id, academic_year or DEFAULT_ACADEMIC_YEAR)]
 
 @router.get("/programs")
 def programs(db: Session = Depends(get_db)):
@@ -84,7 +124,7 @@ def add_program(program_id: str, db: Session = Depends(get_db), user: UserProfil
     count = 0
     for item in p.program_courses:
         offering = next((x for x in item.provider_course.offerings if x.academic_year == p.academic_year and x.semester == item.semester), None)
-        if offering and not db.get(UserCourse, {"user_id": user.id, "course_offering_id": offering.id}): db.add(UserCourse(user_id=user.id, course_offering_id=offering.id)); count += 1
+        if offering: add_offering_to_pae(db, user.id, p.academic_year, offering.id, item.id); count += 1
     db.commit(); return {"added": count}
 
 class IcsUrl(BaseModel): url: HttpUrl
@@ -95,7 +135,7 @@ async def _import_ics(data: bytes, label: str, source_url: str | None, db: Sessi
     course = Course(institution_id=ics.id, code=f"ICS-{label[:20]}", name=label, credits=None); db.add(course); db.flush()
     offering = CourseOffering(course_id=course.id, academic_year="imported", semester=None, source_url=source_url, external_id=source_url); db.add(offering); db.flush()
     result = sync_events(db, offering, await IcalConnector(data, source_url).get_events())
-    if not db.get(UserCourse, {"user_id": user.id, "course_offering_id": offering.id}): db.add(UserCourse(user_id=user.id, course_offering_id=offering.id)); db.commit()
+    add_offering_to_pae(db, user.id, offering.academic_year, offering.id); db.commit()
     return {"offering_id": offering.id, **result}
 
 @router.post("/me/imports/ics-file")

@@ -3,11 +3,19 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.models import Course, CourseOffering, ScheduleEvent, UserCourse
+from app.models.models import Course, CourseOffering, ScheduleEvent, UserPAE, UserPAECourse
 
 
-def user_conflicts(db: Session, user_id: str, start: datetime | None = None, end: datetime | None = None):
-    query = select(ScheduleEvent).join(ScheduleEvent.offering).join(UserCourse, UserCourse.course_offering_id == ScheduleEvent.course_offering_id).where(UserCourse.user_id == user_id, ScheduleEvent.is_cancelled.is_(False)).options(joinedload(ScheduleEvent.offering).joinedload(CourseOffering.course).joinedload(Course.institution))
+def user_conflicts(db: Session, user_id: str, academic_year: str | None = None, start: datetime | None = None, end: datetime | None = None):
+    query = (
+        select(ScheduleEvent)
+        .join(ScheduleEvent.offering)
+        .join(UserPAECourse, UserPAECourse.course_offering_id == ScheduleEvent.course_offering_id)
+        .join(UserPAE, UserPAE.id == UserPAECourse.user_pae_id)
+        .where(UserPAE.user_id == user_id, ScheduleEvent.is_cancelled.is_(False))
+        .options(joinedload(ScheduleEvent.offering).joinedload(CourseOffering.course).joinedload(Course.institution))
+    )
+    if academic_year: query = query.where(UserPAE.academic_year == academic_year)
     if start: query = query.where(ScheduleEvent.end_at > start)
     if end: query = query.where(ScheduleEvent.start_at < end)
     events = sorted(db.scalars(query).unique(), key=lambda item: item.start_at)
