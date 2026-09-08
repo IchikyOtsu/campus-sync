@@ -13,6 +13,7 @@ class NormalizedEvent:
     campus: str | None = None
     building: str | None = None
     room: str | None = None
+    reservation_info: str | None = None
     teacher: str | None = None
     source_url: str | None = None
     source_updated_at: datetime | None = None

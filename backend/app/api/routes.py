@@ -97,7 +97,7 @@ def my_pae_events(start: datetime | None = None, end: datetime | None = None, ac
         .options(joinedload(ScheduleEvent.offering).joinedload(CourseOffering.course).joinedload(Course.institution)))
     if start: statement = statement.where(ScheduleEvent.end_at > start)
     if end: statement = statement.where(ScheduleEvent.start_at < end)
-    return [{"id": e.id, "external_id": e.external_id, "title": e.title, "event_type": e.event_type, "start_at": e.start_at, "end_at": e.end_at, "campus": e.campus, "building": e.building, "room": e.room, "teacher": e.teacher, "source_url": e.source_url, "course": {"code": e.offering.course.code, "name": e.offering.course.name, "institution": e.offering.course.institution.name}} for e in db.scalars(statement).unique()]
+    return [{"id": e.id, "external_id": e.external_id, "title": e.title, "event_type": e.event_type, "start_at": e.start_at, "end_at": e.end_at, "campus": e.campus, "building": e.building, "room": e.room, "reservation_info": e.reservation_info, "teacher": e.teacher, "source_url": e.source_url, "course": {"code": e.offering.course.code, "name": e.offering.course.name, "institution": e.offering.course.institution.name}} for e in db.scalars(statement).unique()]
 
 
 @router.get("/me/conflicts")

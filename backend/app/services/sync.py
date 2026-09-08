@@ -10,7 +10,7 @@ from app.models.models import CourseOffering, ScheduleChange, ScheduleEvent
 def sync_events(db: Session, offering: CourseOffering, events: list[NormalizedEvent]) -> dict[str, int]:
     existing = {event.external_id: event for event in db.scalars(select(ScheduleEvent).where(ScheduleEvent.course_offering_id == offering.id))}
     received = set(); created = changed = removed = 0
-    fields = ("title", "event_type", "start_at", "end_at", "campus", "building", "room", "teacher", "source_url", "source_updated_at")
+    fields = ("title", "event_type", "start_at", "end_at", "campus", "building", "room", "reservation_info", "teacher", "source_url", "source_updated_at")
     for incoming in events:
         received.add(incoming.external_id); event = existing.get(incoming.external_id)
         if not event:

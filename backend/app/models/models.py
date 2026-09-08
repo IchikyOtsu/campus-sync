@@ -63,6 +63,7 @@ class ScheduleEvent(Timestamped, Base):
     campus: Mapped[str | None] = mapped_column(String(160))
     building: Mapped[str | None] = mapped_column(String(160))
     room: Mapped[str | None] = mapped_column(String(160))
+    reservation_info: Mapped[str | None] = mapped_column(Text)
     teacher: Mapped[str | None] = mapped_column(String(300))
     source_url: Mapped[str | None] = mapped_column(String(1000))
     source_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
