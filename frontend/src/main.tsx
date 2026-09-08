@@ -55,12 +55,12 @@ function ConfigError() { return <main class="login"><div class="logo">✣ campus
 function ApiError() { return <main class="login"><div class="logo">✣ campus-sync</div><h1>API inaccessible</h1><p>Connexion Supabase réussie, mais le profil campus-sync n’a pas pu être chargé. Vérifiez que l’API est démarrée et que son CORS autorise cette adresse.</p><button onClick={() => supabase?.auth.signOut()}>Déconnexion</button></main>; }
 function App() {
   const [session, setSession] = createSignal<Session | null | undefined>(undefined);
-  const [profile] = createResource(() => session() ? api<Profile>('/me') : Promise.resolve(undefined));
-  const [pae, { mutate: mutatePae, refetch: refetchPae }] = createResource(() => profile() ? api<PAE>('/me/pae') : Promise.resolve(undefined));
-  const [events, { refetch: refetchEvents }] = createResource(() => profile() ? api<Event[]>('/me/pae/events') : Promise.resolve([]));
-  const [courses, { mutate: mutateCourses, refetch: refetchCourses }] = createResource(() => profile() ? api<any[]>('/me/pae/courses') : Promise.resolve([]));
-  const [conflicts, { refetch: refetchConflicts }] = createResource(() => profile() ? api<any[]>('/me/conflicts') : Promise.resolve([]));
-  const [userPrograms, { refetch: refetchUserPrograms }] = createResource(() => profile() ? api<ProgramSummary[]>('/me/programs') : Promise.resolve([]));
+  const [profile] = createResource(() => session()?.access_token, () => api<Profile>('/me'));
+  const [pae, { mutate: mutatePae, refetch: refetchPae }] = createResource(() => profile()?.id, () => api<PAE>('/me/pae'));
+  const [events, { refetch: refetchEvents }] = createResource(() => profile()?.id, () => api<Event[]>('/me/pae/events'));
+  const [courses, { mutate: mutateCourses, refetch: refetchCourses }] = createResource(() => profile()?.id, () => api<PAEOffering[]>('/me/pae/courses'));
+  const [conflicts, { refetch: refetchConflicts }] = createResource(() => profile()?.id, () => api<any[]>('/me/conflicts'));
+  const [userPrograms, { refetch: refetchUserPrograms }] = createResource(() => profile()?.id, () => api<ProgramSummary[]>('/me/programs'));
   const [file, setFile] = createSignal<File>(); const [notice, setNotice] = createSignal('');
   const refreshDashboard = async () => { await Promise.all([refetchPae(), refetchCourses(), refetchEvents(), refetchConflicts(), refetchUserPrograms()]); };
   onMount(() => { if (!supabase) return; const timeout = window.setTimeout(() => { if (session() === undefined) setSession(null); }, 5000); void supabase.auth.getSession().then(({ data }) => { window.clearTimeout(timeout); setSession(data.session); if (data.session) cleanAuthUrl(); }).catch(() => { window.clearTimeout(timeout); setSession(null); }); const subscription = supabase.auth.onAuthStateChange((_event, nextSession) => { window.clearTimeout(timeout); setSession(nextSession); if (nextSession) cleanAuthUrl(); }); onCleanup(() => { window.clearTimeout(timeout); subscription.data.subscription.unsubscribe(); }); });
