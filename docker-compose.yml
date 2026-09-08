@@ -7,19 +7,29 @@ services:
       POSTGRES_PASSWORD: campus_sync
     ports: ["5432:5432"]
     volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campus_sync -d campus_sync"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   backend:
     build: ./backend
     command: sh -c "python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     environment:
       DATABASE_URL: postgresql+psycopg://campus_sync:campus_sync@db:5432/campus_sync
       CORS_ORIGINS: http://localhost:${FRONTEND_PORT:-5174}
+      SUPABASE_URL: ${VITE_SUPABASE_URL:-}
     ports: ["8000:8000"]
-    depends_on: [db]
+    depends_on:
+      db:
+        condition: service_healthy
   frontend:
     build: ./frontend
     ports: ["${FRONTEND_PORT:-5174}:5173"]
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
     depends_on: [backend]
 volumes:
   postgres_data:
