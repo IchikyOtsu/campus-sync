@@ -75,4 +75,4 @@ async def add_ulb_course(
     result = sync_events(db, offering, teaching_events)
     add_offering_to_pae(db, user.id, selection.academic_year, offering.id)
     db.commit()
-    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "pae": pae_summary(db, user.id, selection.academic_year)}
+    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "pae": pae_summary(db, user.id, selection.academic_year), "offering": {"id": offering.id, "academic_year": offering.academic_year, "semester": offering.semester, "course": {"id": course.id, "code": course.code, "name": course.name, "credits": course.credits, "institution": {"slug": institution.slug, "name": institution.name, "provider": institution.schedule_provider}}}}
