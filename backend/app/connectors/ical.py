@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -30,7 +31,7 @@ class IcalConnector(ScheduleConnector):
 
     @staticmethod
     def _description_fields(component) -> tuple[str | None, str | None]:
-        description = str(component.get("DESCRIPTION", "")).replace("\n", "\n")
+        description = str(component.get("DESCRIPTION", ""))
         lines = [line.strip() for line in description.splitlines() if line.strip()]
         details = [line for line in lines[1:] if not line.upper().startswith("ID ")]
         reservation_info = " ".join(details).lstrip(": ") or None

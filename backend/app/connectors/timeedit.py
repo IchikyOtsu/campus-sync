@@ -30,7 +30,7 @@ class TimeEditCourse:
     code: str
     name: str
     academic_year: str
-    institution: str = "ulb"
+    institution: str = "unknown"
     object_type: str = "course"
 
 

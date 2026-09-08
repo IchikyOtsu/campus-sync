@@ -19,8 +19,8 @@ class CourseSelection(BaseModel):
     academic_year: str
 
 
-def serialize(candidate):
-    return {"institution": candidate.institution, "code": candidate.code, "name": candidate.name, "external_id": candidate.external_id, "academic_year": candidate.academic_year, "object_type": candidate.object_type}
+def serialize(candidate, institution: str | None = None):
+    return {"institution": institution or candidate.institution, "code": candidate.code, "name": candidate.name, "external_id": candidate.external_id, "academic_year": candidate.academic_year, "object_type": candidate.object_type}
 
 
 @router.get("/courses/search")
@@ -58,10 +58,11 @@ async def add_ulb_course(
     teaching_events = [event for event in events if event.title.strip() and not event.title.startswith("Info:") and event.end_at > event.start_at]
     if not teaching_events:
         raise HTTPException(422, "TimeEdit returned no teaching events for this course and academic year")
-    institution_slug = "he2b" if match.institution == "esi" else match.institution
+    detected_institution = connector.institution_from_events(teaching_events, match.institution)
+    institution_slug = "he2b" if detected_institution == "esi" else detected_institution
     institution = db.scalar(select(Institution).where(Institution.slug == institution_slug))
     if not institution:
-        raise HTTPException(503, f"Institution {match.institution} is not seeded")
+        raise HTTPException(503, f"Institution {detected_institution} is not seeded")
     canonical = lambda code: "".join(char for char in code.casefold() if char.isalnum())
     course = next((item for item in db.scalars(select(Course).where(Course.institution_id == institution.id)) if canonical(item.code) == canonical(match.code)), None)
     if not course:
@@ -75,7 +76,12 @@ async def add_ulb_course(
         offering.external_id = match.external_id
     result = sync_events(db, offering, teaching_events)
     existing_pae = pae_summary(db, user.id, selection.academic_year)
-    already_in_pae = db.get(UserPAECourse, {"user_pae_id": existing_pae["id"], "course_offering_id": offering.id}) is not None
+    linked_courses = db.execute(select(UserPAECourse, Course).join(CourseOffering, CourseOffering.id == UserPAECourse.course_offering_id).join(Course, Course.id == CourseOffering.course_id).where(UserPAECourse.user_pae_id == existing_pae["id"])).all()
+    matching_links = [link for link, linked_course in linked_courses if canonical(linked_course.code) == canonical(match.code)]
+    already_in_pae = bool(matching_links)
+    for link in matching_links:
+        if link.course_offering_id != offering.id:
+            db.delete(link)
     add_offering_to_pae(db, user.id, selection.academic_year, offering.id)
     db.commit()
-    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "already_in_pae": already_in_pae, "pae": pae_summary(db, user.id, selection.academic_year), "offering": {"id": offering.id, "academic_year": offering.academic_year, "semester": offering.semester, "course": {"id": course.id, "code": course.code, "name": course.name, "credits": course.credits, "institution": {"slug": institution.slug, "name": institution.name, "provider": institution.schedule_provider}}}}
+    return {"offering_id": offering.id, "course": serialize(match, detected_institution), "sync": result, "already_in_pae": already_in_pae, "pae": pae_summary(db, user.id, selection.academic_year), "offering": {"id": offering.id, "academic_year": offering.academic_year, "semester": offering.semester, "course": {"id": course.id, "code": course.code, "name": course.name, "credits": course.credits, "institution": {"slug": institution.slug, "name": institution.name, "provider": institution.schedule_provider}}}}
