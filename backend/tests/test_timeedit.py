@@ -27,6 +27,16 @@ def test_timeedit_parse():
     assert parsed[0].name == "Electrochimie"
 
 
+
+def test_timeedit_identifies_external_institutions_from_public_labels():
+    html = '''<div data-id="1.5" data-name="ECONY522, Industrial Organization (UCLouvain), 202627"></div>
+<div data-id="2.5" data-name="INFOY112, Machine learning (UNamur), 202627"></div>
+<div data-id="3.5" data-name="INFOY115, Secure software (ESI), 202627"></div>'''
+    parsed = TimeEditConnector._parse_results(html, "2026-2027")
+    assert [(item.code, item.institution) for item in parsed] == [
+        ("ECONY522", "uclouvain"), ("INFOY112", "unamur"), ("INFOY115", "esi")
+    ]
+
 def test_timeedit_course_not_found():
     async def run():
         async with client('<div class="emptysearch">Aucun résultats</div>') as transport:

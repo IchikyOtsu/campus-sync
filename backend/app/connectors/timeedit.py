@@ -30,6 +30,7 @@ class TimeEditCourse:
     code: str
     name: str
     academic_year: str
+    institution: str = "ulb"
     object_type: str = "course"
 
 
@@ -48,6 +49,17 @@ class TimeEditConnector:
         return match.group(1) + match.group(2)[-2:]
 
     @staticmethod
+    def _institution_from_label(code: str, name: str) -> str:
+        label = f"{code} {name}".casefold()
+        if "uclouvain" in label or re.search(r"\bucl\b", label):
+            return "uclouvain"
+        if "unamur" in label or re.search(r"\buniversité de namur\b", label):
+            return "unamur"
+        if "he2b" in label or re.search(r"\besi\b", label):
+            return "esi"
+        return "ulb"
+
+    @staticmethod
     def _parse_results(html: str, academic_year: str) -> list[TimeEditCourse]:
         candidates = re.findall(r'data-id="([^"]+)"[^>]*?data-name="([^"]+)"', html)
         target_year = TimeEditConnector._year_token(academic_year)
@@ -56,7 +68,9 @@ class TimeEditConnector:
             parts = [part.strip() for part in unescape(raw_name).split(",")]
             if len(parts) < 3 or parts[-1] != target_year:
                 continue
-            results.append(TimeEditCourse(external_id=external_id, code=parts[0], name=", ".join(parts[1:-1]), academic_year=academic_year))
+            code, name = parts[0], ", ".join(parts[1:-1])
+            institution = TimeEditConnector._institution_from_label(code, name)
+            results.append(TimeEditCourse(external_id=external_id, code=code, name=name, academic_year=academic_year, institution=institution))
         return results
 
     async def search_courses(self, query: str, academic_year: str) -> list[TimeEditCourse]:

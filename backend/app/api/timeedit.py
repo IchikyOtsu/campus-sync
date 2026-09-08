@@ -20,7 +20,7 @@ class CourseSelection(BaseModel):
 
 
 def serialize(candidate):
-    return {"institution": "ulb", "code": candidate.code, "name": candidate.name, "external_id": candidate.external_id, "academic_year": candidate.academic_year, "object_type": candidate.object_type}
+    return {"institution": candidate.institution, "code": candidate.code, "name": candidate.name, "external_id": candidate.external_id, "academic_year": candidate.academic_year, "object_type": candidate.object_type}
 
 
 @router.get("/courses/search")
@@ -58,9 +58,10 @@ async def add_ulb_course(
     teaching_events = [event for event in events if event.title.strip() and not event.title.startswith("Info:") and event.end_at > event.start_at]
     if not teaching_events:
         raise HTTPException(422, "TimeEdit returned no teaching events for this course and academic year")
-    institution = db.scalar(select(Institution).where(Institution.slug == "ulb"))
+    institution_slug = "he2b" if match.institution == "esi" else match.institution
+    institution = db.scalar(select(Institution).where(Institution.slug == institution_slug))
     if not institution:
-        raise HTTPException(503, "ULB provider is not seeded")
+        raise HTTPException(503, f"Institution {match.institution} is not seeded")
     canonical = lambda code: "".join(char for char in code.casefold() if char.isalnum())
     course = next((item for item in db.scalars(select(Course).where(Course.institution_id == institution.id)) if canonical(item.code) == canonical(match.code)), None)
     if not course:

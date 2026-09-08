@@ -44,9 +44,3 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 export function apiErrorLabel(error: unknown, fallback: string) {
   return error instanceof ApiRequestError ? `${fallback} : HTTP ${error.status}` : fallback;
 }
-
-export async function uploadIcs(file: File) {
-  const form = new FormData();
-  form.append('file', file);
-  return api('/me/imports/ics-file', { method: 'POST', body: form });
-}
