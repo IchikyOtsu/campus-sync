@@ -12,6 +12,10 @@ export const configurationError = [
 
 export const supabase = configurationError ? null : createClient(supabaseUrl!, publishableKey!);
 
+export class ApiRequestError extends Error {
+  constructor(public status: number, public endpoint: string, message: string) { super(message); }
+}
+
 async function authHeaders(): Promise<Headers> {
   const headers = new Headers();
   const token = (await supabase?.auth.getSession())?.data.session?.access_token;
@@ -24,8 +28,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   for (const [name, value] of (await authHeaders()).entries()) headers.set(name, value);
   const response = await fetch(`${apiUrl}/api${path}`, { ...init, headers });
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) {
+    const body = await response.text();
+    let message = body;
+    try { message = JSON.parse(body).detail || body; } catch { /* Plain-text backend error. */ }
+    console.error('API request failed', { status: response.status, endpoint: path, message });
+    throw new ApiRequestError(response.status, path, message);
+  }
   return response.json() as Promise<T>;
+}
+
+export function apiErrorLabel(error: unknown, fallback: string) {
+  return error instanceof ApiRequestError ? `${fallback} : HTTP ${error.status}` : fallback;
 }
 
 export async function uploadIcs(file: File) {

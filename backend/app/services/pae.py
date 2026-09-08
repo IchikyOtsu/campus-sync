@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.models import UserPAE, UserPAECourse
@@ -24,3 +24,9 @@ def add_offering_to_pae(db: Session, user_id: str, academic_year: str, offering_
     item = UserPAECourse(user_pae_id=pae.id, course_offering_id=offering_id, program_course_id=program_course_id)
     db.add(item)
     return item
+
+
+def pae_summary(db: Session, user_id: str, academic_year: str) -> dict[str, str | int | None]:
+    pae = get_or_create_pae(db, user_id, academic_year)
+    course_count = db.scalar(select(func.count()).select_from(UserPAECourse).where(UserPAECourse.user_pae_id == pae.id)) or 0
+    return {"id": pae.id, "academic_year": pae.academic_year, "name": pae.name, "course_count": course_count}

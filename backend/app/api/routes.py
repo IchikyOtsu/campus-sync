@@ -20,7 +20,7 @@ from app.models.models import (
     UserProfile,
 )
 from app.services.conflicts import user_conflicts
-from app.services.pae import DEFAULT_ACADEMIC_YEAR, add_offering_to_pae, get_or_create_pae
+from app.services.pae import DEFAULT_ACADEMIC_YEAR, add_offering_to_pae, get_or_create_pae, pae_summary
 from app.services.sync import sync_events
 
 router = APIRouter(prefix="/api")
@@ -55,9 +55,9 @@ def _pae_courses(db: Session, user: UserProfile, academic_year: str | None):
 
 @router.get("/me/pae")
 def my_pae(academic_year: str = DEFAULT_ACADEMIC_YEAR, db: Session = Depends(get_db), user: UserProfile = Depends(current_user)):
-    pae, offerings = _pae_courses(db, user, academic_year)
+    summary = pae_summary(db, user.id, academic_year)
     db.commit()
-    return {"id": pae.id, "academic_year": pae.academic_year, "name": pae.name, "course_count": len(offerings)}
+    return summary
 
 
 @router.get("/me/pae/courses")

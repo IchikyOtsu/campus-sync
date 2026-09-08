@@ -7,7 +7,7 @@ from app.api.deps import current_user
 from app.connectors.timeedit import TimeEditConnector, TimeEditUnavailable
 from app.db.session import get_db
 from app.models.models import Course, CourseOffering, Institution, UserProfile
-from app.services.pae import add_offering_to_pae
+from app.services.pae import add_offering_to_pae, pae_summary
 from app.services.sync import sync_events
 
 router = APIRouter(prefix="/api/institutions/ulb", tags=["timeedit"])
@@ -75,4 +75,4 @@ async def add_ulb_course(
     result = sync_events(db, offering, teaching_events)
     add_offering_to_pae(db, user.id, selection.academic_year, offering.id)
     db.commit()
-    return {"offering_id": offering.id, "course": serialize(match), "sync": result}
+    return {"offering_id": offering.id, "course": serialize(match), "sync": result, "pae": pae_summary(db, user.id, selection.academic_year)}
