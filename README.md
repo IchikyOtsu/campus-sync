@@ -52,3 +52,28 @@ GitHub Actions exécute ces vérifications pour chaque push et pull request.
 | Custom | HE2B | Planifié |
 
 Un ICS importé est persisté, synchronisé par UID/external ID et alimente le calendrier ainsi que la détection des chevauchements. Les connecteurs universitaires n’effectuent aucune fausse synchronisation.
+
+## Configuration Supabase de développement
+
+Pour le développement sur le réseau local, configurez Supabase avec :
+
+- Site URL : `http://192.168.0.51:5174`
+- Redirect URL : `http://192.168.0.51:5174/**`
+
+Variables frontend (dans un fichier `.env` non versionné) :
+
+```env
+VITE_API_URL=http://192.168.0.51:8000
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+```
+
+Variables backend :
+
+```env
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_JWT_AUDIENCE=authenticated
+CORS_ORIGINS=http://192.168.0.51:5174
+```
+
+La Publishable Key est conçue pour le navigateur. Ne remplacez jamais cette clé par une clé `service_role` ou une clé secrète. L’API récupère les clés publiques JWT via le JWKS Supabase et ne reçoit pas cette Publishable Key.
